@@ -1,0 +1,10 @@
+{
+  "Gallery": {
+    "title": "Your Photos",
+    "code": "Code",
+    "noPhotos": "No photos have been uploaded to this gallery yet.",
+    "selected": "Selected",
+    "total": "Total",
+    "buy": "Buy High-Res"
+  }
+}
