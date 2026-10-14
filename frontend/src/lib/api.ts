@@ -72,7 +72,11 @@ export const api = {
     },
     body: JSON.stringify({ gallery_ids: galleryIds })
   }),
-
+  createCheckoutSession: (photoIds: string[], shortCode: string) => fetchAPI('/orders/checkout-session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photo_ids: photoIds.map(String), short_code: shortCode })
+  }),
   uploadPhotos: (galleryId: string, formData: FormData) => fetchAPI(`/photos/${galleryId}/upload`, {
     method: 'POST',
     // Do not set Content-Type header when sending FormData; browser will do it automatically

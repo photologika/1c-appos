@@ -1,23 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 
 export default function GuestGallery() {
   const params = useParams();
   const router = useRouter();
+  const t = useTranslations('Gallery');
   const code = params.code as string;
   const locale = params.locale as string;
   const [gallery, setGallery] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [selectedPhotos, setSelectedPhotos] = useState<Set<number>>(new Set());
+  const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (code) {
-      // Changed to use the new public endpoint to avoid auth requirement for guests
       api.getPublicGalleryByCode(code)
         .then(data => {
           setGallery(data);
@@ -30,7 +30,7 @@ export default function GuestGallery() {
     }
   }, [code]);
 
-  const toggleSelection = (photoId: number) => {
+  const toggleSelection = (photoId: string) => {
     setSelectedPhotos(prev => {
       const next = new Set(prev);
       if (next.has(photoId)) next.delete(photoId);
@@ -39,13 +39,33 @@ export default function GuestGallery() {
     });
   };
 
+  const totalPrice = useMemo(() => {
+    if (!gallery?.photos) return 0;
+    let totalCents = 0;
+    selectedPhotos.forEach(id => {
+      const photo = gallery.photos.find((p: any) => p.id === id);
+      if (photo) totalCents += photo.price_cents;
+    });
+    return totalCents / 100;
+  }, [selectedPhotos, gallery]);
+
   const handleCheckout = () => {
-    alert(`Checkout with ${selectedPhotos.size} photos selected.`);
+    const createSession = async () => {
+      try {
+        const response = await api.createCheckoutSession(Array.from(selectedPhotos), code);
+        if (response.checkout_url) {
+          window.location.href = response.checkout_url;
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to initiate checkout");
+      }
+    };
+    createSession();
   };
 
   const changeLanguage = (newLocale: string) => {
-    // Basic navigation to switch locale
-    router.push(`/${newLocale}/g/${code}`);
+    router.push(`/${newLocale}/view/${code}`);
   };
 
   const locales = [
@@ -77,8 +97,8 @@ export default function GuestGallery() {
       <div className="bg-white px-4 py-3 border-b sticky top-0 z-20 shadow-sm flex flex-col gap-3">
         <div className="flex justify-between items-center max-w-7xl mx-auto w-full">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Your Photos</h1>
-            <p className="text-xs sm:text-sm text-gray-500 font-mono mt-0.5">Code: {gallery.short_code}</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">{t('title')}</h1>
+            <p className="text-xs sm:text-sm text-gray-500 font-mono mt-0.5">{t('code')}: {gallery.short_code}</p>
           </div>
           {/* Language Switcher Pills */}
           <div className="flex gap-1.5 bg-gray-100 p-1 rounded-lg">
@@ -128,7 +148,7 @@ export default function GuestGallery() {
           {(!gallery.photos || gallery.photos.length === 0) && (
             <div className="text-gray-500 col-span-full text-center py-20 bg-white rounded-xl border border-dashed">
                <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z" /></svg>
-              <p>No photos have been uploaded to this gallery yet.</p>
+              <p>{t('noPhotos')}</p>
             </div>
           )}
         </div>
@@ -139,18 +159,16 @@ export default function GuestGallery() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-4 sm:gap-6">
              <div className="flex flex-col">
-                <p className="text-xs sm:text-sm text-gray-500 font-medium uppercase tracking-wider">Selected</p>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium uppercase tracking-wider">{t('selected')}</p>
                 <p className="text-xl sm:text-2xl font-black text-gray-900">{selectedPhotos.size}</p>
              </div>
              <div className="h-8 sm:h-10 w-px bg-gray-200"></div>
              <div className="flex flex-col">
-                <p className="text-xs sm:text-sm text-gray-500 font-medium uppercase tracking-wider">Total</p>
-                {/* Calculate total based on a sample price if real logic doesn't exist */}
-                <p className="text-xl sm:text-2xl font-black text-gray-900">${(selectedPhotos.size * 5).toFixed(2)}</p>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium uppercase tracking-wider">{t('total')}</p>
+                <p className="text-xl sm:text-2xl font-black text-gray-900">${totalPrice.toFixed(2)}</p>
              </div>
           </div>
           <div className="flex items-center gap-4">
-             {/* Payment Logos (CSS Mock) */}
              <div className="hidden md:flex gap-1.5 opacity-40 grayscale">
                 <div className="w-9 h-6 bg-blue-600 rounded flex items-center justify-center text-[8px] text-white font-bold">VISA</div>
                 <div className="w-9 h-6 bg-red-500 rounded flex items-center justify-center text-[8px] text-white font-bold italic">MC</div>
@@ -161,7 +179,7 @@ export default function GuestGallery() {
               disabled={selectedPhotos.size === 0}
               className="bg-indigo-600 text-white px-6 sm:px-10 py-3 sm:py-3.5 rounded-xl font-bold text-sm sm:text-base disabled:opacity-50 disabled:bg-gray-400 hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl active:scale-95 whitespace-nowrap"
             >
-              Buy High-Res
+              {t('buy')}
             </button>
           </div>
         </div>

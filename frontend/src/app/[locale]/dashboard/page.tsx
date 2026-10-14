@@ -118,6 +118,10 @@ export default function Dashboard() {
                         // Mock progress UI state would go here in a real app
                         await api.uploadPhotos(g.id, formData);
                         alert('Photos uploaded and processing in background!');
+                        // Simple mock progress update
+                        e.target.parentElement?.classList.add("bg-green-50", "border-green-400");
+                        const span = e.target.parentElement?.querySelector("span");
+                        if(span) span.innerText = "Upload Complete!";
                       } catch(err) {
                         console.error(err);
                         alert('Upload failed');
