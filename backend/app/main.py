@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.routes import photos
+from app.api.routes import auth, galleries, photos
 
 app = FastAPI(
     title="Street Photo Platform API",
@@ -8,7 +8,9 @@ app = FastAPI(
 )
 
 # Register routers
-app.include_router(photos.router, prefix="/api/v1/galleries", tags=["Photos"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
+app.include_router(galleries.router, prefix="/api/v1/galleries", tags=["Galleries"])
+app.include_router(photos.router, prefix="/api/v1/photos", tags=["Photos"])
 
 @app.get("/health")
 async def health_check():

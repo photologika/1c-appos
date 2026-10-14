@@ -6,7 +6,8 @@ from fastapi import APIRouter, UploadFile, File, BackgroundTasks, Depends, HTTPE
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db, async_session_maker
-from app.models.models import Photo, Gallery
+from app.models.models import Photo, Gallery, User
+from app.core.security import get_current_user
 from app.services.s3_client import s3_client
 from app.services.image_processor import image_processor
 
@@ -63,9 +64,10 @@ async def upload_photos(
     gallery_id: str,
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    # Ensure gallery exists and get photographer ID
+    # Ensure gallery exists and belongs to the current user
     try:
         gallery_uuid = uuid.UUID(gallery_id)
     except ValueError:
@@ -75,8 +77,8 @@ async def upload_photos(
     result = await db.execute(query)
     gallery = result.scalar_one_or_none()
 
-    if not gallery:
-        raise HTTPException(status_code=404, detail="Gallery not found")
+    if not gallery or gallery.photographer_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Gallery not found or access denied")
 
     photographer_id = str(gallery.photographer_id)
 
